@@ -7,6 +7,11 @@ on:
     branches: [main, staging]
   pull_request:
     branches: [main]
+  
+permissions:
+    actions: read
+    contents: read
+    security-events: write
 
 env:
   REGISTRY: ghcr.io
@@ -35,7 +40,6 @@ jobs:
         
       - name: Install Backend Dependencies
         run: pip install -r requirements.txt
-        working-directory: backend
         
       - name: Run Frontend Tests
         run: npm test
