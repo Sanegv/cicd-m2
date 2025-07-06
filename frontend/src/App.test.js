@@ -1,9 +1,8 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import App from './App';
 
-// Mock fetch globally
 global.fetch = jest.fn();
 
 describe('App Component', () => {
@@ -15,13 +14,15 @@ describe('App Component', () => {
     jest.restoreAllMocks();
   });
 
-  test('renders the employee list title', () => {
+  test('renders the employee list title', async () => {
     fetch.mockResolvedValueOnce({
       ok: true,
       json: async () => []
     });
 
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     
     expect(screen.getByText('Liste des employés')).toBeInTheDocument();
   });
@@ -37,7 +38,9 @@ describe('App Component', () => {
       json: async () => mockEmployees
     });
 
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
 
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(fetch).toHaveBeenCalledWith('http://localhost:8000/employees');
@@ -55,7 +58,9 @@ describe('App Component', () => {
       json: async () => mockEmployees
     });
 
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
 
     await waitFor(() => {
       expect(screen.getByText('John Doe - Developer')).toBeInTheDocument();
@@ -71,7 +76,9 @@ describe('App Component', () => {
       json: async () => []
     });
 
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
 
     await waitFor(() => {
       const list = screen.getByRole('list');
@@ -83,17 +90,27 @@ describe('App Component', () => {
   test('handles fetch error gracefully', async () => {
     fetch.mockRejectedValueOnce(new Error('Network error'));
 
-    // Suppress console.error for this test
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    render(<App />);
+    const originalUnhandledRejection = process.listeners('unhandledRejection');
+    process.removeAllListeners('unhandledRejection');
+    process.on('unhandledRejection', () => {
+    });
+
+    await act(async () => {
+      render(<App />);
+    });
 
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledTimes(1);
     });
 
-    // The component should still render the title even if fetch fails
     expect(screen.getByText('Liste des employés')).toBeInTheDocument();
+    
+    process.removeAllListeners('unhandledRejection');
+    originalUnhandledRejection.forEach(listener => {
+      process.on('unhandledRejection', listener);
+    });
     
     consoleSpy.mockRestore();
   });
@@ -111,7 +128,9 @@ describe('App Component', () => {
       json: async () => mockEmployees
     });
 
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
 
     await waitFor(() => {
       const listItems = screen.getAllByRole('listitem');
@@ -129,7 +148,9 @@ describe('App Component', () => {
       json: async () => mockEmployees
     });
 
-    const { container } = render(<App />);
+    const { container } = await act(async () => {
+      return render(<App />);
+    });
 
     await waitFor(() => {
       const listItem = container.querySelector('li');
@@ -143,14 +164,16 @@ describe('App Component', () => {
       json: async () => []
     });
 
-    const { rerender } = render(<App />);
+    const { rerender } = await act(async () => {
+      return render(<App />);
+    });
     
     expect(fetch).toHaveBeenCalledTimes(1);
 
-    // Re-render the component
-    rerender(<App />);
+    await act(async () => {
+      rerender(<App />);
+    });
     
-    // Fetch should still only be called once (due to empty dependency array)
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

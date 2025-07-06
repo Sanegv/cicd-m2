@@ -6,7 +6,11 @@ function App() {
   useEffect(() => {
     fetch("http://localhost:8000/employees")
       .then((res) => res.json())
-      .then(setEmployees);
+      .then(setEmployees)
+      .catch((error) => {
+        console.error('Failed to fetch employees:', error);
+        setEmployees([]);
+      });
   }, []);
 
   return (

@@ -38,8 +38,12 @@ jobs:
         run: npm install
         working-directory: frontend
           
-      - name: Install Frontend Dependencies???
+      - name: Install Frontend Dependencies 2
         run: npm install --save-dev @testing-library/react @testing-library/jest-dom
+        working-directory: frontend
+
+      - name: Install Frontend Dependencies 3
+        run:  npm install react-scripts --save
         working-directory: frontend
         
       - name: Install Backend Dependencies
