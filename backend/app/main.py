@@ -29,31 +29,41 @@ def root():
     return "Bonjour"
 
 @app.get("/employees", response_model=List[Employee])
-def get_employees():
+def get_employees():    
+    conn = None
+    cur = None
     try:
         conn = get_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, name, role FROM employees;")
         rows = cur.fetchall()
-        cur.close()
-        conn.close()
         return [{"id": r[0], "name": r[1], "role": r[2]} for r in rows]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
 @app.post("/employees", response_model=Employee)
 def add_employee(emp: Employee):
+    conn = None
+    cur = None
     try:
         conn = get_connection()
         cur = conn.cursor()
         cur.execute("INSERT INTO employees (id, name, role) VALUES (%s, %s, %s);",
                     (emp.id, emp.name, emp.role))
         conn.commit()
-        cur.close()
-        conn.close()
         return emp
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
 if __name__ == "__main__":
     import uvicorn
