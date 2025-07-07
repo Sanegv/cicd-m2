@@ -1,0 +1,35 @@
+name: Manual Deployment to Production
+on:
+  workflow_dispatch:    
+
+jobs:
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+            
+      - name: Deploy Frontend to Production
+        run: |
+          az webapp config container set \
+            --name ${{ secrets.FRONTEND_APP_NAME }} \
+            --resource-group ${{ secrets.RESOURCE_GROUP_NAME }} \
+            --docker-image-name ${{ secrets.REGISTRY_NAME }}.azurecr.io/frontend:${{ github.sha }}
+            
+      - name: Deploy Backend to Production
+        run: |
+          az webapp config container set \
+            --name ${{ secrets.BACKEND_APP_NAME }} \
+            --resource-group ${{ secrets.RESOURCE_GROUP_NAME }} \
+            --docker-image-name ${{ secrets.REGISTRY_NAME }}.azurecr.io/backend:${{ github.sha }}
+            
+      - name: Run Health Check
+        run: |
+          sleep 30
+          curl -f https://${{ secrets.BACKEND_APP_NAME }}.azurewebsites.net/health || exit 1
