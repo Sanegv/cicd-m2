@@ -15,4 +15,4 @@ COPY ./app/ app/
 # le port !
 EXPOSE 80
 
-CMD ["python", "app/app.py"]
+CMD ["python", "app.py"]
