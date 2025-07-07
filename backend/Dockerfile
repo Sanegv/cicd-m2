@@ -10,9 +10,9 @@ RUN pip install --upgrade pip \
  && pip install -r requirements.txt
 
 # backend/.. -> conteneur
-COPY ./app/ app/
+COPY ./app/ /app/
 
 # le port !
 EXPOSE 80
 
-CMD ["python", "app.py"]
+CMD ["python", "main.py"]
