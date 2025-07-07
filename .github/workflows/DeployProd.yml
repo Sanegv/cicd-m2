@@ -76,4 +76,4 @@ jobs:
       - name: Run Health Check
         run: |
           sleep 30
-          curl -f https://${{ secrets.BACKEND_APP_NAME }}.azurewebsites.net/health || exit 1
+          curl -f https://${{ secrets.BACKEND_APP_NAME }}.azurewebsites.net/ || exit 1
