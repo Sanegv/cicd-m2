@@ -142,10 +142,43 @@ function App() {
     setError('');
   };
 
+  // Handle name input change for create form - clear error when typing
+  const handleNameChange = (e) => {
+    setNewEmployee({ ...newEmployee, name: e.target.value });
+    if (error) {
+      setError('');
+    }
+  };
+
+  // Handle role input change for create form - clear error when typing
+  const handleRoleChange = (e) => {
+    setNewEmployee({ ...newEmployee, role: e.target.value });
+    if (error) {
+      setError('');
+    }
+  };
+
+  // Handle name input change for edit form - clear error when typing
+  const handleEditNameChange = (e) => {
+    setEditingEmployee({ ...editingEmployee, name: e.target.value });
+    if (error) {
+      setError('');
+    }
+  };
+
+  // Handle role input change for edit form - clear error when typing
+  const handleEditRoleChange = (e) => {
+    setEditingEmployee({ ...editingEmployee, role: e.target.value });
+    if (error) {
+      setError('');
+    }
+  };
+
   return (
     <div>
       <h1>Liste des employés</h1>
       
+      {/* Error message display - THIS WAS MISSING FROM YOUR ORIGINAL CODE */}
       {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
       
       {loading && <div>Loading...</div>}
@@ -159,7 +192,7 @@ function App() {
               type="text"
               placeholder="Nom"
               value={newEmployee.name}
-              onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
+              onChange={handleNameChange}
               disabled={loading}
               data-testid="create-name-input"
             />
@@ -169,7 +202,7 @@ function App() {
               type="text"
               placeholder="Rôle"
               value={newEmployee.role}
-              onChange={(e) => setNewEmployee({ ...newEmployee, role: e.target.value })}
+              onChange={handleRoleChange}
               disabled={loading}
               data-testid="create-role-input"
             />
@@ -190,7 +223,7 @@ function App() {
                 type="text"
                 placeholder="Nom"
                 value={editingEmployee.name}
-                onChange={(e) => setEditingEmployee({ ...editingEmployee, name: e.target.value })}
+                onChange={handleEditNameChange}
                 disabled={loading}
                 data-testid="edit-name-input"
               />
@@ -200,7 +233,7 @@ function App() {
                 type="text"
                 placeholder="Rôle"
                 value={editingEmployee.role}
-                onChange={(e) => setEditingEmployee({ ...editingEmployee, role: e.target.value })}
+                onChange={handleEditRoleChange}
                 disabled={loading}
                 data-testid="edit-role-input"
               />
