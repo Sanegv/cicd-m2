@@ -4,13 +4,13 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # backend -> conteneur
-COPY requirements.txt ../requirements.txt
+COPY ../requirements.txt requirements.txt
 
 RUN pip install --upgrade pip \
  && pip install -r ../requirements.txt
 
 # backend/.. -> conteneur
-COPY app/ ./app/
+COPY ./app/ app/
 
 # le port !
 EXPOSE 8000
