@@ -8,7 +8,7 @@ import psycopg2
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'app'))
-from main import app, get_connection, Employee
+from main import app, get_connection, Employee, EmployeeCreate, EmployeeUpdate
 
 
 class TestEmployeeAPI:
@@ -56,7 +56,7 @@ class TestEmployeeAPI:
         # Vérification que les méthodes ont été appelées
         mock_get_connection.assert_called_once()
         mock_conn.cursor.assert_called_once()
-        mock_cursor.execute.assert_called_once_with("SELECT id, name, role FROM employees;")
+        mock_cursor.execute.assert_called_once_with("SELECT id, name, role FROM employees ORDER BY id;")
         mock_cursor.fetchall.assert_called_once()
         mock_cursor.close.assert_called_once()
         mock_conn.close.assert_called_once()
@@ -96,23 +96,51 @@ class TestEmployeeAPI:
         assert "Erreur de connexion" in response.json()["detail"]
         
     @patch('main.get_connection')
-    def test_get_employees_cursor_error(self, mock_get_connection):
-        """Test d'erreur au niveau du curseur"""
-        # Mock de la connexion
+    def test_get_employee_success(self, mock_get_connection):
+        """Test de récupération d'un employé spécifique avec succès"""
+        # Mock de la connexion et du curseur
         mock_conn = Mock()
         mock_cursor = Mock()
         mock_get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
         
-        # Le curseur lève une exception lors de l'exécution
-        mock_cursor.execute.side_effect = psycopg2.Error("Erreur SQL")
+        # Données simulées de la base de données
+        mock_cursor.fetchone.return_value = (1, "Alice Dupont", "Développeur")
         
         # Appel de l'endpoint
-        response = self.client.get("/employees")
+        response = self.client.get("/employees/1")
         
         # Vérifications
-        assert response.status_code == 500
-        assert "Erreur SQL" in response.json()["detail"]
+        assert response.status_code == 200
+        employee = response.json()
+        assert employee == {"id": 1, "name": "Alice Dupont", "role": "Développeur"}
+        
+        # Vérification que les méthodes ont été appelées
+        mock_get_connection.assert_called_once()
+        mock_conn.cursor.assert_called_once()
+        mock_cursor.execute.assert_called_once_with("SELECT id, name, role FROM employees WHERE id = %s;", (1,))
+        mock_cursor.fetchone.assert_called_once()
+        mock_cursor.close.assert_called_once()
+        mock_conn.close.assert_called_once()
+        
+    @patch('main.get_connection')
+    def test_get_employee_not_found(self, mock_get_connection):
+        """Test de récupération d'un employé inexistant"""
+        # Mock de la connexion et du curseur
+        mock_conn = Mock()
+        mock_cursor = Mock()
+        mock_get_connection.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+        
+        # Aucun employé trouvé
+        mock_cursor.fetchone.return_value = None
+        
+        # Appel de l'endpoint
+        response = self.client.get("/employees/999")
+        
+        # Vérifications
+        assert response.status_code == 404
+        assert "Employee not found" in response.json()["detail"]
         
     @patch('main.get_connection')
     def test_add_employee_success(self, mock_get_connection):
@@ -123,9 +151,11 @@ class TestEmployeeAPI:
         mock_get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
         
-        # Données de l'employé à ajouter
+        # Mock du retour de l'ID généré
+        mock_cursor.fetchone.return_value = (4,)
+        
+        # Données de l'employé à ajouter (sans ID)
         employee_data = {
-            "id": 4,
             "name": "David Leroy",
             "role": "Testeur"
         }
@@ -136,15 +166,16 @@ class TestEmployeeAPI:
         # Vérifications
         assert response.status_code == 200
         returned_employee = response.json()
-        assert returned_employee == employee_data
+        assert returned_employee == {"id": 4, "name": "David Leroy", "role": "Testeur"}
         
         # Vérification que les méthodes ont été appelées
         mock_get_connection.assert_called_once()
         mock_conn.cursor.assert_called_once()
         mock_cursor.execute.assert_called_once_with(
-            "INSERT INTO employees (id, name, role) VALUES (%s, %s, %s);",
-            (4, "David Leroy", "Testeur")
+            "INSERT INTO employees (name, role) VALUES (%s, %s) RETURNING id;",
+            ("David Leroy", "Testeur")
         )
+        mock_cursor.fetchone.assert_called_once()
         mock_conn.commit.assert_called_once()
         mock_cursor.close.assert_called_once()
         mock_conn.close.assert_called_once()
@@ -157,7 +188,6 @@ class TestEmployeeAPI:
         
         # Données de l'employé à ajouter
         employee_data = {
-            "id": 5,
             "name": "Emma Bernard",
             "role": "Analyste"
         }
@@ -183,7 +213,6 @@ class TestEmployeeAPI:
         
         # Données de l'employé à ajouter
         employee_data = {
-            "id": 1,  # ID déjà existant
             "name": "Test User",
             "role": "Test Role"
         }
@@ -194,12 +223,120 @@ class TestEmployeeAPI:
         # Vérifications
         assert response.status_code == 500
         assert "Violation de contrainte" in response.json()["detail"]
+        # Vérification que rollback a été appelé
+        mock_conn.rollback.assert_called_once()
+        
+    @patch('main.get_connection')
+    def test_update_employee_success(self, mock_get_connection):
+        """Test de mise à jour d'employé avec succès"""
+        # Mock de la connexion et du curseur
+        mock_conn = Mock()
+        mock_cursor = Mock()
+        mock_get_connection.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+        
+        # Mock pour vérifier que l'employé existe
+        mock_cursor.fetchone.return_value = (1,)
+        
+        # Données de mise à jour
+        update_data = {
+            "name": "Alice Dupont Updated",
+            "role": "Senior Développeur"
+        }
+        
+        # Appel de l'endpoint
+        response = self.client.put("/employees/1", json=update_data)
+        
+        # Vérifications
+        assert response.status_code == 200
+        updated_employee = response.json()
+        assert updated_employee == {"id": 1, "name": "Alice Dupont Updated", "role": "Senior Développeur"}
+        
+        # Vérification que les méthodes ont été appelées
+        mock_get_connection.assert_called_once()
+        mock_conn.cursor.assert_called_once()
+        # Vérifier que deux requêtes ont été exécutées (SELECT puis UPDATE)
+        assert mock_cursor.execute.call_count == 2
+        mock_conn.commit.assert_called_once()
+        mock_cursor.close.assert_called_once()
+        mock_conn.close.assert_called_once()
+        
+    @patch('main.get_connection')
+    def test_update_employee_not_found(self, mock_get_connection):
+        """Test de mise à jour d'un employé inexistant"""
+        # Mock de la connexion et du curseur
+        mock_conn = Mock()
+        mock_cursor = Mock()
+        mock_get_connection.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+        
+        # Aucun employé trouvé
+        mock_cursor.fetchone.return_value = None
+        
+        # Données de mise à jour
+        update_data = {
+            "name": "Test User",
+            "role": "Test Role"
+        }
+        
+        # Appel de l'endpoint
+        response = self.client.put("/employees/999", json=update_data)
+        
+        # Vérifications
+        assert response.status_code == 404
+        assert "Employee not found" in response.json()["detail"]
+        
+    @patch('main.get_connection')
+    def test_delete_employee_success(self, mock_get_connection):
+        """Test de suppression d'employé avec succès"""
+        # Mock de la connexion et du curseur
+        mock_conn = Mock()
+        mock_cursor = Mock()
+        mock_get_connection.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+        
+        # Mock pour vérifier que l'employé existe
+        mock_cursor.fetchone.return_value = (1,)
+        
+        # Appel de l'endpoint
+        response = self.client.delete("/employees/1")
+        
+        # Vérifications
+        assert response.status_code == 200
+        assert response.json() == {"message": "Employee deleted successfully"}
+        
+        # Vérification que les méthodes ont été appelées
+        mock_get_connection.assert_called_once()
+        mock_conn.cursor.assert_called_once()
+        # Vérifier que deux requêtes ont été exécutées (SELECT puis DELETE)
+        assert mock_cursor.execute.call_count == 2
+        mock_conn.commit.assert_called_once()
+        mock_cursor.close.assert_called_once()
+        mock_conn.close.assert_called_once()
+        
+    @patch('main.get_connection')
+    def test_delete_employee_not_found(self, mock_get_connection):
+        """Test de suppression d'un employé inexistant"""
+        # Mock de la connexion et du curseur
+        mock_conn = Mock()
+        mock_cursor = Mock()
+        mock_get_connection.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+        
+        # Aucun employé trouvé
+        mock_cursor.fetchone.return_value = None
+        
+        # Appel de l'endpoint
+        response = self.client.delete("/employees/999")
+        
+        # Vérifications
+        assert response.status_code == 404
+        assert "Employee not found" in response.json()["detail"]
         
     def test_add_employee_invalid_data(self):
         """Test d'ajout d'employé avec données invalides"""
         # Données invalides (champ manquant)
         invalid_data = {
-            "id": 6,
             "name": "Test User"
             # "role" manquant
         }
@@ -214,13 +351,26 @@ class TestEmployeeAPI:
         """Test d'ajout d'employé avec types invalides"""
         # Données avec types invalides
         invalid_data = {
-            "id": "not_an_int",  # Devrait être un entier
-            "name": "Test User",
+            "name": 123,  # Devrait être une string
             "role": "Test Role"
         }
         
         # Appel de l'endpoint
         response = self.client.post("/employees", json=invalid_data)
+        
+        # Vérifications
+        assert response.status_code == 422  # Validation error
+        
+    def test_update_employee_invalid_data(self):
+        """Test de mise à jour d'employé avec données invalides"""
+        # Données invalides (champ manquant)
+        invalid_data = {
+            "name": "Test User"
+            # "role" manquant
+        }
+        
+        # Appel de l'endpoint
+        response = self.client.put("/employees/1", json=invalid_data)
         
         # Vérifications
         assert response.status_code == 422  # Validation error
@@ -277,7 +427,6 @@ class TestEmployeeAPI:
         
         # Données de l'employé à ajouter
         employee_data = {
-            "id": 7,
             "name": "Test User",
             "role": "Test Role"
         }
@@ -289,10 +438,39 @@ class TestEmployeeAPI:
         assert response.status_code == 500
         mock_cursor.close.assert_called_once()
         mock_conn.close.assert_called_once()
+        
+    @patch('main.get_connection')
+    def test_update_employee_connection_cleanup_on_error(self, mock_get_connection):
+        """Test de nettoyage des connexions en cas d'erreur lors de la mise à jour"""
+        # Mock de la connexion
+        mock_conn = Mock()
+        mock_cursor = Mock()
+        mock_get_connection.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+        
+        # L'employé existe
+        mock_cursor.fetchone.return_value = (1,)
+        # Le commit lève une exception
+        mock_conn.commit.side_effect = Exception("Erreur de commit")
+        
+        # Données de mise à jour
+        update_data = {
+            "name": "Test User",
+            "role": "Test Role"
+        }
+        
+        # Appel de l'endpoint
+        response = self.client.put("/employees/1", json=update_data)
+        
+        # Vérifications que les ressources sont nettoyées même en cas d'erreur
+        assert response.status_code == 500
+        mock_cursor.close.assert_called_once()
+        mock_conn.close.assert_called_once()
+        mock_conn.rollback.assert_called_once()
 
 
-class TestEmployeeModel:
-    """Tests pour le modèle Employee"""
+class TestEmployeeModels:
+    """Tests pour les modèles Employee"""
     
     def test_employee_model_creation(self):
         """Test de création d'un objet Employee"""
@@ -301,6 +479,28 @@ class TestEmployeeModel:
         assert employee.id == 1
         assert employee.name == "Test User"
         assert employee.role == "Test Role"
+        
+    def test_employee_model_optional_id(self):
+        """Test de création d'un objet Employee sans ID"""
+        employee = Employee(name="Test User", role="Test Role")
+        
+        assert employee.id is None
+        assert employee.name == "Test User"
+        assert employee.role == "Test Role"
+        
+    def test_employee_create_model(self):
+        """Test du modèle EmployeeCreate"""
+        employee_create = EmployeeCreate(name="Test User", role="Test Role")
+        
+        assert employee_create.name == "Test User"
+        assert employee_create.role == "Test Role"
+        
+    def test_employee_update_model(self):
+        """Test du modèle EmployeeUpdate"""
+        employee_update = EmployeeUpdate(name="Updated User", role="Updated Role")
+        
+        assert employee_update.name == "Updated User"
+        assert employee_update.role == "Updated Role"
         
     def test_employee_model_validation(self):
         """Test de validation du modèle Employee"""
@@ -312,15 +512,24 @@ class TestEmployeeModel:
         assert employee.name == "Test User"
         assert employee.role == "Test Role"
         
+    def test_employee_create_model_validation(self):
+        """Test de validation du modèle EmployeeCreate"""
+        # Test avec données valides
+        valid_data = {"name": "Test User", "role": "Test Role"}
+        employee_create = EmployeeCreate(**valid_data)
+        
+        assert employee_create.name == "Test User"
+        assert employee_create.role == "Test Role"
+        
     def test_employee_model_invalid_data(self):
         """Test de validation avec données invalides"""
-        # Test avec données manquantes
+        # Test avec données manquantes pour EmployeeCreate
         with pytest.raises(ValueError):
-            Employee(id=1, name="Test User")  # role manquant
+            EmployeeCreate(name="Test User")  # role manquant
             
         # Test avec type invalide
         with pytest.raises(ValueError):
-            Employee(id="not_an_int", name="Test User", role="Test Role")
+            EmployeeCreate(name=123, role="Test Role")  # name devrait être string
 
 
 if __name__ == "__main__":
