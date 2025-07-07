@@ -72,7 +72,7 @@ describe('App Component with CRUD Operations', () => {
         expect(fetch).toHaveBeenCalledTimes(1);
       });
       
-      expect(fetch).toHaveBeenCalledWith('http://localhost:8000/employees');
+      expect(fetch).toHaveBeenCalledWith('http://localhost:80/employees');
     });
 
     test('renders empty list when no employees are returned', async () => {
@@ -151,7 +151,7 @@ describe('App Component with CRUD Operations', () => {
 
       // Verify API call
       await waitFor(() => {
-        expect(fetch).toHaveBeenCalledWith('http://localhost:8000/employees', {
+        expect(fetch).toHaveBeenCalledWith('http://localhost:80/employees', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -235,7 +235,7 @@ describe('App Component with CRUD Operations', () => {
       await userEvent.click(screen.getByTestId('edit-submit-btn'));
 
       await waitFor(() => {
-        expect(fetch).toHaveBeenCalledWith('http://localhost:8000/employees/1', {
+        expect(fetch).toHaveBeenCalledWith('http://localhost:80/employees/1', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -424,7 +424,7 @@ describe('App Component with CRUD Operations', () => {
       expect(confirm).toHaveBeenCalledWith('Are you sure you want to delete this employee?');
 
       await waitFor(() => {
-        expect(fetch).toHaveBeenCalledWith('http://localhost:8000/employees/1', {
+        expect(fetch).toHaveBeenCalledWith('http://localhost:80/employees/1', {
           method: 'DELETE'
         });
       });

@@ -13,6 +13,6 @@ RUN pip install --upgrade pip \
 COPY ./app/ app/
 
 # le port !
-EXPOSE 8000
+EXPOSE 80
 
 CMD ["python", "app/app.py"]

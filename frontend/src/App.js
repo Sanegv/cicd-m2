@@ -8,7 +8,7 @@ function App() {
   const [error, setError] = useState('');
 
   // Get API URL from environment variable, fallback to localhost
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:80';
 
   // Fetch employees on component mount
   useEffect(() => {
