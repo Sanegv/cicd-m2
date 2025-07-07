@@ -135,14 +135,14 @@ jobs:
           az webapp config container set \
             --name ${{ secrets.FRONTEND_APP_NAME }}-staging \
             --resource-group ${{ secrets.RESOURCE_GROUP_NAME }} \
-            --docker-image-name ${{ secrets.REGISTRY_NAME }}.azurecr.io/frontend:${{ github.sha }}
+            --container-image-name ${{ secrets.REGISTRY_NAME }}.azurecr.io/frontend:${{ github.sha }}
             
       - name: Deploy Backend to Staging
         run: |
           az webapp config container set \
             --name ${{ secrets.BACKEND_APP_NAME }}-staging \
             --resource-group ${{ secrets.RESOURCE_GROUP_NAME }} \
-            --docker-image-name ${{ secrets.REGISTRY_NAME }}.azurecr.io/backend:${{ github.sha }}
+            --container-image-name ${{ secrets.REGISTRY_NAME }}.azurecr.io/backend:${{ github.sha }}
 
   e2e-tests:
     name: E2E Tests
